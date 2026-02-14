@@ -1,0 +1,40 @@
+:root {
+  --font-sans: 'Pretendard Variable', 'SUIT Variable', 'Noto Sans KR', sans-serif;
+  --font-heading: 'Sora', 'Pretendard Variable', sans-serif;
+
+  --color-bg: #f4f6ef;
+  --color-bg-accent: #e9edd9;
+  --color-surface: #fefdf9;
+  --color-surface-muted: #edf2e2;
+  --color-border: #d4ddc0;
+
+  --color-fg: #26321f;
+  --color-fg-muted: #5b6950;
+
+  --color-primary: #3f7f53;
+  --color-primary-soft: #dcefd8;
+  --color-ring: #5d9f71;
+
+  --color-success: #2f8b57;
+  --color-success-soft: #dbf2e4;
+  --color-warning: #bc7f1f;
+  --color-warning-soft: #f9efd8;
+  --color-danger: #b23a34;
+  --color-danger-soft: #f8dddb;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+
+  --shadow-card: 0 16px 40px -24px rgba(24, 39, 8, 0.35);
+  --gradient-page: radial-gradient(1200px 500px at 20% -10%, #f6f7d6 0%, transparent 55%),
+    radial-gradient(1000px 520px at 120% -30%, #d4ebc9 0%, transparent 48%),
+    linear-gradient(180deg, #eff5e0 0%, #f4f6ef 55%, #f6f8f2 100%);
+}
+
+@media (max-width: 768px) {
+  :root {
+    --shadow-card: 0 12px 30px -20px rgba(24, 39, 8, 0.35);
+  }
+}
