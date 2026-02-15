@@ -32,6 +32,7 @@ export function CareLogComposer({ plantId }: CareLogComposerProps) {
     defaultValues: {
       eventType: 'WATER',
       occurredAt: new Date().toISOString().slice(0, 16),
+      fertilizerName: '',
       note: '',
     },
   })
@@ -40,15 +41,19 @@ export function CareLogComposer({ plantId }: CareLogComposerProps) {
     await mutation.mutateAsync({
       eventType: values.eventType,
       occurredAt: new Date(values.occurredAt).toISOString(),
+      fertilizerName: values.fertilizerName,
       note: values.note,
     })
 
     form.reset({
       eventType: values.eventType,
       occurredAt: new Date().toISOString().slice(0, 16),
+      fertilizerName: '',
       note: '',
     })
   })
+
+  const showFertilizerName = eventType === 'FERTILIZE'
 
   return (
     <Card>
@@ -65,6 +70,10 @@ export function CareLogComposer({ plantId }: CareLogComposerProps) {
                 const nextValue = value as CareLogFormValues['eventType']
                 setEventType(nextValue)
                 form.setValue('eventType', nextValue, { shouldValidate: true })
+
+                if (nextValue !== 'FERTILIZE') {
+                  form.setValue('fertilizerName', '', { shouldValidate: true })
+                }
               }}
             >
               <SelectTrigger id='eventType'>
@@ -85,17 +94,29 @@ export function CareLogComposer({ plantId }: CareLogComposerProps) {
 
           <div className='space-y-2'>
             <Label htmlFor='occurredAt'>작업 일시</Label>
-            <Input
-              id='occurredAt'
-              type='datetime-local'
-              {...form.register('occurredAt')}
-            />
+            <Input id='occurredAt' type='datetime-local' {...form.register('occurredAt')} />
             {form.formState.errors.occurredAt ? (
               <p className='text-xs text-[var(--color-danger)]'>
                 {form.formState.errors.occurredAt.message}
               </p>
             ) : null}
           </div>
+
+          {showFertilizerName ? (
+            <div className='space-y-2 sm:col-span-2'>
+              <Label htmlFor='fertilizerName'>비료 이름</Label>
+              <Input
+                id='fertilizerName'
+                placeholder='예: 액비A 5ml, 알비료(완효성)'
+                {...form.register('fertilizerName')}
+              />
+              {form.formState.errors.fertilizerName ? (
+                <p className='text-xs text-[var(--color-danger)]'>
+                  {form.formState.errors.fertilizerName.message}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className='space-y-2 sm:col-span-2'>
             <Label htmlFor='note'>메모</Label>

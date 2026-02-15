@@ -4,12 +4,12 @@ import { Search } from 'lucide-react'
 
 import { PlantCard } from '@/components/plant/PlantCard'
 import { Button, Card, CardContent, Input } from '@/components/ui'
+import { useLatestCareSummaries } from '@/features/care/api/useCare'
 import { usePlants } from '@/features/plants/api/usePlants'
-import { useSchedules } from '@/features/schedule/api/useSchedule'
 
 export function PlantsPage() {
   const { data: plants, isLoading, error } = usePlants()
-  const { data: schedules } = useSchedules()
+  const { data: summaries } = useLatestCareSummaries()
   const [query, setQuery] = useState('')
 
   const filteredPlants = useMemo(() => {
@@ -68,7 +68,7 @@ export function PlantsPage() {
             <PlantCard
               key={plant.id}
               plant={plant}
-              schedule={schedules?.find((item) => item.plantId === plant.id)}
+              summary={summaries?.find((item) => item.plantId === plant.id)}
             />
           ))}
         </div>

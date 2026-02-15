@@ -4,11 +4,7 @@ import { useForm } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { Button, Card, CardContent, CardHeader, CardTitle, DatePicker, Input, Label, Textarea } from '@/components/ui'
-import {
-  useCreatePlant,
-  usePlant,
-  useUpdatePlant,
-} from '@/features/plants/api/usePlants'
+import { useCreatePlant, usePlant, useUpdatePlant } from '@/features/plants/api/usePlants'
 import { plantFormSchema, type PlantFormValues } from '@/schemas/plantFormSchema'
 import { toDateInputValue } from '@/lib/utils'
 
@@ -29,7 +25,6 @@ export function PlantFormPage() {
       location: '',
       acquiredOn: '',
       note: '',
-      nextRepotAt: '',
     },
   })
 
@@ -44,7 +39,6 @@ export function PlantFormPage() {
       location: plant.location ?? '',
       acquiredOn: toDateInputValue(plant.acquiredOn),
       note: plant.note ?? '',
-      nextRepotAt: toDateInputValue(plant.nextRepotAt),
     })
   }, [form, plant])
 
@@ -55,7 +49,6 @@ export function PlantFormPage() {
       location: values.location,
       acquiredOn: values.acquiredOn,
       note: values.note,
-      nextRepotAt: values.nextRepotAt,
     }
 
     if (isEdit && plantId) {
@@ -104,17 +97,12 @@ export function PlantFormPage() {
             <DatePicker id='acquiredOn' {...form.register('acquiredOn')} />
           </div>
 
-          <div className='space-y-2'>
-            <Label htmlFor='nextRepotAt'>다음 분갈이 예정일</Label>
-            <DatePicker id='nextRepotAt' {...form.register('nextRepotAt')} />
-          </div>
-
           <div className='space-y-2 md:col-span-2'>
             <Label htmlFor='note'>메모</Label>
             <Textarea id='note' {...form.register('note')} placeholder='관리 팁, 상태 변화 등을 기록하세요.' />
           </div>
 
-          <div className='md:col-span-2 flex items-center gap-2'>
+          <div className='flex items-center gap-2 md:col-span-2'>
             <Button type='submit' disabled={createMutation.isPending || updateMutation.isPending}>
               {createMutation.isPending || updateMutation.isPending
                 ? '저장 중...'

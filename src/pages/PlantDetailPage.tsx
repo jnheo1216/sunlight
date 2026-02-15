@@ -1,51 +1,22 @@
-import { useMemo } from 'react'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { CareLogComposer } from '@/components/plant/CareLogComposer'
 import { PhotoUploader } from '@/components/plant/PhotoUploader'
-import { ScheduleSummary } from '@/components/plant/ScheduleSummary'
-import { Button, Card, CardContent, CardHeader, CardTitle, DatePicker, Input, Label } from '@/components/ui'
-import {
-  useCareLogs,
-  useCareProfile,
-  useUpsertCareProfile,
-} from '@/features/care/api/useCare'
-import {
-  useDeletePlant,
-  usePlant,
-} from '@/features/plants/api/usePlants'
-import { useSchedules } from '@/features/schedule/api/useSchedule'
-import { careProfileSchema, type CareProfileFormValues } from '@/schemas/careProfileSchema'
-import { formatDateTime, toDateInputValue } from '@/lib/utils'
+import { PlantCareHistoryCalendar } from '@/components/plant/PlantCareHistoryCalendar'
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
+import { useCareLogs } from '@/features/care/api/useCare'
+import { useDeletePlant, usePlant } from '@/features/plants/api/usePlants'
+import { formatDateTime } from '@/lib/utils'
+import { getLatestLogByType, getRepotElapsedDays } from '@/services/careInsights'
 
 export function PlantDetailPage() {
   const { plantId } = useParams<{ plantId: string }>()
   const navigate = useNavigate()
 
   const { data: plant, isLoading, error } = usePlant(plantId)
-  const { data: profile } = useCareProfile(plantId)
   const { data: logs } = useCareLogs(plantId)
-  const { data: schedules } = useSchedules()
 
-  const upsertProfile = useUpsertCareProfile(plantId ?? '')
   const deletePlant = useDeletePlant()
-
-  const schedule = useMemo(
-    () => schedules?.find((item) => item.plantId === plantId),
-    [schedules, plantId],
-  )
-
-  const form = useForm<CareProfileFormValues>({
-    resolver: zodResolver(careProfileSchema),
-    values: {
-      wateringIntervalDays: profile?.wateringIntervalDays ?? 7,
-      fertilizingIntervalDays: profile?.fertilizingIntervalDays ?? 30,
-      nextWateringOverrideAt: toDateInputValue(profile?.nextWateringOverrideAt),
-      nextFertilizingOverrideAt: toDateInputValue(profile?.nextFertilizingOverrideAt),
-    },
-  })
 
   if (!plantId) {
     return <p className='text-sm text-[var(--color-danger)]'>잘못된 접근입니다.</p>
@@ -59,18 +30,10 @@ export function PlantDetailPage() {
     return <p className='text-sm text-[var(--color-danger)]'>식물 정보를 찾지 못했습니다.</p>
   }
 
-  const onSubmitProfile = form.handleSubmit(async (values) => {
-    await upsertProfile.mutateAsync({
-      wateringIntervalDays: values.wateringIntervalDays,
-      fertilizingIntervalDays: values.fertilizingIntervalDays,
-      nextWateringOverrideAt: values.nextWateringOverrideAt
-        ? new Date(values.nextWateringOverrideAt).toISOString()
-        : undefined,
-      nextFertilizingOverrideAt: values.nextFertilizingOverrideAt
-        ? new Date(values.nextFertilizingOverrideAt).toISOString()
-        : undefined,
-    })
-  })
+  const latestWaterLog = getLatestLogByType(logs, 'WATER')
+  const latestFertilizeLog = getLatestLogByType(logs, 'FERTILIZE')
+  const latestRepotLog = getLatestLogByType(logs, 'REPOT')
+  const repotElapsedDays = getRepotElapsedDays(logs)
 
   const handleDeletePlant = async () => {
     if (!window.confirm('정말 삭제하시겠습니까? 관련 이력도 함께 제거됩니다.')) {
@@ -102,60 +65,45 @@ export function PlantDetailPage() {
         </CardHeader>
       </Card>
 
-      <ScheduleSummary schedule={schedule} />
-
       <Card>
         <CardHeader>
-          <CardTitle>주기 설정 및 수동 보정</CardTitle>
+          <CardTitle>케어 인사이트</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form className='grid gap-3 md:grid-cols-2' onSubmit={onSubmitProfile}>
-            <div className='space-y-2'>
-              <Label htmlFor='wateringIntervalDays'>물 주기 (일)</Label>
-              <Input
-                id='wateringIntervalDays'
-                type='number'
-                {...form.register('wateringIntervalDays', { valueAsNumber: true })}
-              />
-              {form.formState.errors.wateringIntervalDays ? (
-                <p className='text-xs text-[var(--color-danger)]'>
-                  {form.formState.errors.wateringIntervalDays.message}
-                </p>
-              ) : null}
-            </div>
+        <CardContent className='grid gap-3 md:grid-cols-2 xl:grid-cols-4'>
+          <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-3'>
+            <p className='text-xs text-[var(--color-fg-muted)]'>최근 물 준 날</p>
+            <p className='mt-1 text-sm font-semibold'>
+              {latestWaterLog ? formatDateTime(latestWaterLog.occurredAt) : '기록 없음'}
+            </p>
+          </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='fertilizingIntervalDays'>비료 주기 (일)</Label>
-              <Input
-                id='fertilizingIntervalDays'
-                type='number'
-                {...form.register('fertilizingIntervalDays', { valueAsNumber: true })}
-              />
-              {form.formState.errors.fertilizingIntervalDays ? (
-                <p className='text-xs text-[var(--color-danger)]'>
-                  {form.formState.errors.fertilizingIntervalDays.message}
-                </p>
-              ) : null}
-            </div>
+          <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-3'>
+            <p className='text-xs text-[var(--color-fg-muted)]'>최근 비료 준 날</p>
+            <p className='mt-1 text-sm font-semibold'>
+              {latestFertilizeLog ? formatDateTime(latestFertilizeLog.occurredAt) : '기록 없음'}
+            </p>
+            <p className='text-xs text-[var(--color-fg-muted)]'>
+              {latestFertilizeLog?.fertilizerName ?? '-'}
+            </p>
+          </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='nextWateringOverrideAt'>다음 물 주기 수동 지정</Label>
-              <DatePicker id='nextWateringOverrideAt' {...form.register('nextWateringOverrideAt')} />
-            </div>
+          <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-3'>
+            <p className='text-xs text-[var(--color-fg-muted)]'>최근 분갈이</p>
+            <p className='mt-1 text-sm font-semibold'>
+              {latestRepotLog ? formatDateTime(latestRepotLog.occurredAt) : '기록 없음'}
+            </p>
+          </div>
 
-            <div className='space-y-2'>
-              <Label htmlFor='nextFertilizingOverrideAt'>다음 비료 주기 수동 지정</Label>
-              <DatePicker id='nextFertilizingOverrideAt' {...form.register('nextFertilizingOverrideAt')} />
-            </div>
-
-            <div className='md:col-span-2'>
-              <Button type='submit' disabled={upsertProfile.isPending}>
-                {upsertProfile.isPending ? '저장 중...' : '주기 설정 저장'}
-              </Button>
-            </div>
-          </form>
+          <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-3'>
+            <p className='text-xs text-[var(--color-fg-muted)]'>분갈이 경과일</p>
+            <p className='mt-1 text-sm font-semibold'>
+              {repotElapsedDays === null ? '분갈이 기록 없음' : `${repotElapsedDays}일 경과`}
+            </p>
+          </div>
         </CardContent>
       </Card>
+
+      <PlantCareHistoryCalendar logs={logs ?? []} />
 
       <PhotoUploader plantId={plant.id} />
       <CareLogComposer plantId={plant.id} />
@@ -173,12 +121,19 @@ export function PlantDetailPage() {
                   className='rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-3'
                 >
                   <div className='flex items-center justify-between'>
-                    <p className='text-sm font-semibold'>{log.eventType}</p>
+                    <p className='text-sm font-semibold'>
+                      {log.eventType}
+                      {log.eventType === 'FERTILIZE' && log.fertilizerName
+                        ? ` · ${log.fertilizerName}`
+                        : ''}
+                    </p>
                     <p className='text-xs text-[var(--color-fg-muted)]'>
                       {formatDateTime(log.occurredAt)}
                     </p>
                   </div>
-                  {log.note ? <p className='mt-1 text-sm text-[var(--color-fg-muted)]'>{log.note}</p> : null}
+                  {log.note ? (
+                    <p className='mt-1 text-sm text-[var(--color-fg-muted)]'>{log.note}</p>
+                  ) : null}
                 </div>
               ))}
             </div>

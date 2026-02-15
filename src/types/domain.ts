@@ -36,8 +36,17 @@ export interface CareLog {
   plantId: string
   eventType: CareEventType
   occurredAt: string
+  fertilizerName: string | null
   note: string | null
   createdAt: string
+}
+
+export interface PlantLatestCareSummary {
+  plantId: string
+  lastWateredAt: string | null
+  lastFertilizedAt: string | null
+  lastFertilizerName: string | null
+  lastRepottedAt: string | null
 }
 
 export type ScheduleStatus = 'OVERDUE' | 'DUE' | 'UPCOMING' | 'UNSCHEDULED'
@@ -59,8 +68,8 @@ export interface CareScheduleEvent {
   plantName: string
   type: CareEventType
   startsAt: string
-  status: ScheduleStatus
-  completed: boolean
+  fertilizerName: string | null
+  note: string | null
 }
 
 export interface ScheduleRange {

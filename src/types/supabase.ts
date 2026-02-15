@@ -98,6 +98,7 @@ export interface Database {
           plant_id: string
           event_type: 'WATER' | 'FERTILIZE' | 'REPOT'
           occurred_at: string
+          fertilizer_name: string | null
           note: string | null
           created_at: string
         }
@@ -106,11 +107,13 @@ export interface Database {
           plant_id: string
           event_type: 'WATER' | 'FERTILIZE' | 'REPOT'
           occurred_at: string
+          fertilizer_name?: string | null
           note?: string | null
           created_at?: string
         }
         Update: {
           occurred_at?: string
+          fertilizer_name?: string | null
           note?: string | null
         }
       }

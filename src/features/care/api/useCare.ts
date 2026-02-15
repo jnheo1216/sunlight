@@ -3,11 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/features/queryKeys'
 import {
   createCareLog,
-  getCareProfile,
   listCareLogs,
-  upsertCareProfile,
+  listLatestCareSummaries,
   type CreateCareLogInput,
-  type UpsertCareProfileInput,
 } from '@/services/careService'
 import {
   deletePhoto,
@@ -16,31 +14,18 @@ import {
   uploadPlantPhoto,
 } from '@/services/photosService'
 
-export function useCareProfile(plantId?: string) {
-  return useQuery({
-    queryKey: queryKeys.profile(plantId ?? ''),
-    queryFn: () => getCareProfile(plantId ?? ''),
-    enabled: Boolean(plantId),
-  })
-}
-
-export function useUpsertCareProfile(plantId: string) {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (input: UpsertCareProfileInput) => upsertCareProfile(plantId, input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.profile(plantId) })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.schedules })
-    },
-  })
-}
-
 export function useCareLogs(plantId?: string) {
   return useQuery({
     queryKey: queryKeys.logs(plantId ?? ''),
     queryFn: () => listCareLogs(plantId ?? ''),
     enabled: Boolean(plantId),
+  })
+}
+
+export function useLatestCareSummaries() {
+  return useQuery({
+    queryKey: queryKeys.latestCareSummaries,
+    queryFn: listLatestCareSummaries,
   })
 }
 
@@ -51,8 +36,8 @@ export function useCreateCareLog(plantId: string) {
     mutationFn: (input: CreateCareLogInput) => createCareLog(plantId, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.logs(plantId) })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.profile(plantId) })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.schedules })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.latestCareSummaries })
+      void queryClient.invalidateQueries({ queryKey: ['schedule'] })
     },
   })
 }

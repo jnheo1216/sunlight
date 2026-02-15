@@ -1,30 +1,32 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { addDays, formatISO } from 'date-fns'
+import { addDays, formatISO, isSameDay, parseISO } from 'date-fns'
 import { ArrowRight, CalendarClock } from 'lucide-react'
 
-import { CareStatusBadge } from '@/components/plant/CareStatusBadge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@/components/ui'
 import { useSchedule } from '@/features/schedule/api/useSchedule'
 import { formatDate } from '@/lib/utils'
+import { careEventLabel } from '@/services/scheduleService'
 
 export function DashboardPage() {
-  const range = useMemo(
-    () => {
-      const now = new Date()
+  const range = useMemo(() => {
+    const now = new Date()
 
-      return {
-        from: formatISO(now, { representation: 'date' }),
-        to: formatISO(addDays(now, 14), { representation: 'date' }),
-      }
-    },
-    [],
-  )
+    return {
+      from: formatISO(addDays(now, -14), { representation: 'date' }),
+      to: formatISO(addDays(now, 1), { representation: 'date' }),
+    }
+  }, [])
 
   const { data: events, isLoading, error } = useSchedule(range)
 
-  const upcoming = (events ?? []).filter((event) => !event.completed).slice(0, 8)
-  const completed = (events ?? []).filter((event) => event.completed).slice(0, 5)
+  const recentLogs = [...(events ?? [])]
+    .sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime())
+    .slice(0, 10)
+
+  const todayLogs = (events ?? [])
+    .filter((event) => isSameDay(parseISO(event.startsAt), new Date()))
+    .sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime())
 
   if (isLoading) {
     return <p className='text-sm text-[var(--color-fg-muted)]'>대시보드 로딩 중...</p>
@@ -38,14 +40,14 @@ export function DashboardPage() {
     <div className='space-y-5'>
       <Card>
         <CardHeader>
-          <CardTitle>오늘과 다가오는 일정</CardTitle>
-          <CardDescription>물 주기, 비료 주기, 분갈이 예정 작업</CardDescription>
+          <CardTitle>오늘 기록</CardTitle>
+          <CardDescription>오늘 입력된 물/비료/분갈이 기록</CardDescription>
         </CardHeader>
         <CardContent className='grid gap-2'>
-          {upcoming.length === 0 ? (
-            <p className='text-sm text-[var(--color-fg-muted)]'>예정 작업이 없습니다.</p>
+          {todayLogs.length === 0 ? (
+            <p className='text-sm text-[var(--color-fg-muted)]'>오늘 기록이 없습니다.</p>
           ) : (
-            upcoming.map((event) => (
+            todayLogs.map((event) => (
               <Link
                 key={event.id}
                 to={`/plants/${event.plantId}`}
@@ -54,13 +56,13 @@ export function DashboardPage() {
                 <div>
                   <p className='text-sm font-medium'>{event.plantName}</p>
                   <p className='text-xs text-[var(--color-fg-muted)]'>
-                    {event.type} · {formatDate(event.startsAt)}
+                    {careEventLabel(event.type)} · {formatDate(event.startsAt)}
+                    {event.type === 'FERTILIZE' && event.fertilizerName
+                      ? ` · ${event.fertilizerName}`
+                      : ''}
                   </p>
                 </div>
-                <div className='flex items-center gap-2'>
-                  <CareStatusBadge status={event.status} />
-                  <ArrowRight className='h-4 w-4 text-[var(--color-fg-muted)]' />
-                </div>
+                <ArrowRight className='h-4 w-4 text-[var(--color-fg-muted)]' />
               </Link>
             ))
           )}
@@ -70,20 +72,23 @@ export function DashboardPage() {
       <div className='grid gap-5 lg:grid-cols-2'>
         <Card>
           <CardHeader>
-            <CardTitle>최근 완료 이력</CardTitle>
+            <CardTitle>최근 활동</CardTitle>
           </CardHeader>
           <CardContent className='space-y-2'>
-            {completed.length === 0 ? (
-              <p className='text-sm text-[var(--color-fg-muted)]'>완료 이력이 없습니다.</p>
+            {recentLogs.length === 0 ? (
+              <p className='text-sm text-[var(--color-fg-muted)]'>최근 활동이 없습니다.</p>
             ) : (
-              completed.map((event) => (
+              recentLogs.map((event) => (
                 <div
                   key={event.id}
                   className='rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm'
                 >
                   <p className='font-medium'>{event.plantName}</p>
                   <p className='text-xs text-[var(--color-fg-muted)]'>
-                    {event.type} · {formatDate(event.startsAt)}
+                    {careEventLabel(event.type)} · {formatDate(event.startsAt)}
+                    {event.type === 'FERTILIZE' && event.fertilizerName
+                      ? ` · ${event.fertilizerName}`
+                      : ''}
                   </p>
                 </div>
               ))
@@ -103,11 +108,11 @@ export function DashboardPage() {
               <Link to='/plants/new'>새 식물 등록</Link>
             </Button>
             <Button asChild variant='secondary'>
-              <Link to='/calendar'>캘린더 열기</Link>
+              <Link to='/calendar'>기록 캘린더 열기</Link>
             </Button>
             <p className='mt-1 inline-flex items-center gap-2 text-xs text-[var(--color-fg-muted)]'>
               <CalendarClock className='h-3.5 w-3.5' />
-              일정은 로컬 타임존 기준으로 표시됩니다.
+              기록은 로컬 타임존 기준으로 표시됩니다.
             </p>
           </CardContent>
         </Card>

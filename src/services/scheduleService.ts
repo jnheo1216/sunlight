@@ -1,47 +1,9 @@
-import { addDays, endOfDay, isAfter, isBefore, parseISO, startOfDay } from 'date-fns'
+import { addDays, endOfDay, parseISO, startOfDay } from 'date-fns'
 
 import { requireSupabase } from '@/lib/supabase'
-import type { CareLog, CareSchedule, CareScheduleEvent, ScheduleRange } from '@/types/domain'
-import type { Database } from '@/types/supabase'
+import type { CareEventType, CareScheduleEvent, ScheduleRange } from '@/types/domain'
 
-function mapScheduleRow(row: Database['public']['Views']['v_care_schedule']['Row']): CareSchedule {
-  return {
-    plantId: row.plant_id,
-    plantName: row.plant_name,
-    nextWateringAt: row.next_watering_at,
-    nextFertilizingAt: row.next_fertilizing_at,
-    nextRepotAt: row.next_repot_at,
-    wateringStatus: row.watering_status,
-    fertilizingStatus: row.fertilizing_status,
-    repotStatus: row.repot_status,
-  }
-}
-
-function mapLogRow(row: Database['public']['Tables']['care_logs']['Row']): CareLog {
-  return {
-    id: row.id,
-    plantId: row.plant_id,
-    eventType: row.event_type,
-    occurredAt: row.occurred_at,
-    note: row.note,
-    createdAt: row.created_at,
-  }
-}
-
-function isInsideRange(value: string | null, range: ScheduleRange): boolean {
-  if (!value) {
-    return false
-  }
-
-  const date = parseISO(value)
-  return !isBefore(date, startOfDay(parseISO(range.from))) && !isAfter(date, endOfDay(parseISO(range.to)))
-}
-
-function typeColor(type: CareScheduleEvent['type'], completed: boolean): string {
-  if (completed) {
-    return '#4f9f6c'
-  }
-
+export function careEventColor(type: CareEventType): string {
   if (type === 'WATER') {
     return '#3772ff'
   }
@@ -53,109 +15,69 @@ function typeColor(type: CareScheduleEvent['type'], completed: boolean): string 
   return '#9c36b5'
 }
 
-function statusByType(schedule: CareSchedule, type: CareScheduleEvent['type']) {
+export function careEventLabel(type: CareEventType): string {
   if (type === 'WATER') {
-    return schedule.wateringStatus
+    return '물 주기'
   }
 
   if (type === 'FERTILIZE') {
-    return schedule.fertilizingStatus
+    return '비료 주기'
   }
 
-  return schedule.repotStatus
-}
-
-export async function listCareSchedules(): Promise<CareSchedule[]> {
-  const supabase = requireSupabase()
-  const { data, error } = await supabase
-    .from('v_care_schedule')
-    .select('*')
-    .order('plant_name', { ascending: true })
-
-  if (error) {
-    throw error
-  }
-
-  return data.map(mapScheduleRow)
+  return '분갈이'
 }
 
 export async function listCareEvents(range: ScheduleRange): Promise<CareScheduleEvent[]> {
   const supabase = requireSupabase()
-  const [scheduleRows, logRows] = await Promise.all([
-    listCareSchedules(),
+
+  const [logsResponse, plantsResponse] = await Promise.all([
     supabase
       .from('care_logs')
       .select('*')
       .gte('occurred_at', startOfDay(parseISO(range.from)).toISOString())
       .lte('occurred_at', endOfDay(parseISO(range.to)).toISOString())
       .order('occurred_at', { ascending: false }),
+    supabase.from('plants').select('id, name'),
   ])
 
-  if (logRows.error) {
-    throw logRows.error
+  if (logsResponse.error) {
+    throw logsResponse.error
   }
 
-  const completedEvents: CareScheduleEvent[] = logRows.data.map((log) => {
-    const mapped = mapLogRow(log)
-    const matchedPlant = scheduleRows.find((item) => item.plantId === mapped.plantId)
-
-    return {
-      id: mapped.id,
-      plantId: mapped.plantId,
-      plantName: matchedPlant?.plantName ?? '알 수 없는 식물',
-      type: mapped.eventType,
-      startsAt: mapped.occurredAt,
-      status: 'DUE',
-      completed: true,
-    }
-  })
-
-  const plannedEvents: CareScheduleEvent[] = []
-
-  for (const schedule of scheduleRows) {
-    const candidates: Array<{ type: CareScheduleEvent['type']; at: string | null }> = [
-      { type: 'WATER', at: schedule.nextWateringAt },
-      { type: 'FERTILIZE', at: schedule.nextFertilizingAt },
-      { type: 'REPOT', at: schedule.nextRepotAt },
-    ]
-
-    for (const candidate of candidates) {
-      if (!isInsideRange(candidate.at, range)) {
-        continue
-      }
-
-      if (!candidate.at) {
-        continue
-      }
-
-      plannedEvents.push({
-        id: `${schedule.plantId}-${candidate.type}-${candidate.at}`,
-        plantId: schedule.plantId,
-        plantName: schedule.plantName,
-        type: candidate.type,
-        startsAt: candidate.at,
-        status: statusByType(schedule, candidate.type),
-        completed: false,
-      })
-    }
+  if (plantsResponse.error) {
+    throw plantsResponse.error
   }
 
-  return [...plannedEvents, ...completedEvents].sort(
-    (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
-  )
+  const plantNameMap = new Map(plantsResponse.data.map((plant) => [plant.id, plant.name]))
+
+  return logsResponse.data
+    .map((log) => ({
+      id: log.id,
+      plantId: log.plant_id,
+      plantName: plantNameMap.get(log.plant_id) ?? '알 수 없는 식물',
+      type: log.event_type,
+      startsAt: log.occurred_at,
+      fertilizerName: log.fertilizer_name,
+      note: log.note,
+    }))
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
 }
 
 export function toCalendarEvents(events: CareScheduleEvent[]) {
   return events.map((event) => {
     const date = parseISO(event.startsAt)
+    const subLabel =
+      event.type === 'FERTILIZE' && event.fertilizerName
+        ? ` · ${event.fertilizerName}`
+        : ''
 
     return {
       id: event.id,
-      title: `${event.completed ? '완료' : '예정'} · ${event.plantName} · ${event.type}`,
+      title: `${event.plantName} · ${careEventLabel(event.type)}${subLabel}`,
       start: event.startsAt,
       end: addDays(date, 1).toISOString(),
       allDay: true,
-      color: typeColor(event.type, event.completed),
+      color: careEventColor(event.type),
       extendedProps: event,
     }
   })

@@ -1,18 +1,17 @@
 import { Droplets, Sprout, Flower2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-import { CareStatusBadge } from '@/components/plant/CareStatusBadge'
 import { Avatar, AvatarFallback, AvatarImage, Button, Card, CardContent, CardHeader } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
-import type { CareSchedule, Plant } from '@/types/domain'
+import type { Plant, PlantLatestCareSummary } from '@/types/domain'
 
 interface PlantCardProps {
   plant: Plant
-  schedule?: CareSchedule
+  summary?: PlantLatestCareSummary
   coverUrl?: string | null
 }
 
-export function PlantCard({ plant, schedule, coverUrl }: PlantCardProps) {
+export function PlantCard({ plant, summary, coverUrl }: PlantCardProps) {
   return (
     <Card className='group relative overflow-hidden p-0'>
       <div className='pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#dff2db]/80 to-transparent' />
@@ -34,30 +33,30 @@ export function PlantCard({ plant, schedule, coverUrl }: PlantCardProps) {
         </Button>
       </CardHeader>
       <CardContent className='space-y-3 p-4 pt-0'>
-        <div className='grid grid-cols-3 gap-2 text-xs'>
-          <div className='rounded-xl bg-[var(--color-surface-muted)] p-2'>
-            <p className='mb-1 inline-flex items-center gap-1 text-[var(--color-fg-muted)]'>
-              <Droplets className='h-3.5 w-3.5' /> 물
+        <div className='space-y-2 text-xs'>
+          <div className='flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] p-2'>
+            <p className='inline-flex items-center gap-1 text-[var(--color-fg-muted)]'>
+              <Droplets className='h-3.5 w-3.5' /> 최근 물
             </p>
-            <CareStatusBadge status={schedule?.wateringStatus ?? 'UNSCHEDULED'} />
+            <p className='font-medium text-[var(--color-fg)]'>{formatDate(summary?.lastWateredAt)}</p>
           </div>
-          <div className='rounded-xl bg-[var(--color-surface-muted)] p-2'>
-            <p className='mb-1 inline-flex items-center gap-1 text-[var(--color-fg-muted)]'>
-              <Flower2 className='h-3.5 w-3.5' /> 비료
-            </p>
-            <CareStatusBadge status={schedule?.fertilizingStatus ?? 'UNSCHEDULED'} />
-          </div>
-          <div className='rounded-xl bg-[var(--color-surface-muted)] p-2'>
-            <p className='mb-1 inline-flex items-center gap-1 text-[var(--color-fg-muted)]'>
-              <Sprout className='h-3.5 w-3.5' /> 분갈이
-            </p>
-            <CareStatusBadge status={schedule?.repotStatus ?? 'UNSCHEDULED'} />
-          </div>
-        </div>
 
-        <div className='flex items-center justify-between text-xs text-[var(--color-fg-muted)]'>
-          <span>다음 분갈이</span>
-          <span className='font-medium text-[var(--color-fg)]'>{formatDate(plant.nextRepotAt)}</span>
+          <div className='flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] p-2'>
+            <p className='inline-flex items-center gap-1 text-[var(--color-fg-muted)]'>
+              <Flower2 className='h-3.5 w-3.5' /> 최근 비료
+            </p>
+            <p className='font-medium text-[var(--color-fg)]'>
+              {formatDate(summary?.lastFertilizedAt)}
+              {summary?.lastFertilizerName ? ` · ${summary.lastFertilizerName}` : ''}
+            </p>
+          </div>
+
+          <div className='flex items-center justify-between rounded-xl bg-[var(--color-surface-muted)] p-2'>
+            <p className='inline-flex items-center gap-1 text-[var(--color-fg-muted)]'>
+              <Sprout className='h-3.5 w-3.5' /> 최근 분갈이
+            </p>
+            <p className='font-medium text-[var(--color-fg)]'>{formatDate(summary?.lastRepottedAt)}</p>
+          </div>
         </div>
       </CardContent>
     </Card>

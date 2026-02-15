@@ -8,7 +8,6 @@ export interface UpsertPlantInput {
   location?: string
   acquiredOn?: string
   note?: string
-  nextRepotAt?: string
 }
 
 function mapPlant(row: Database['public']['Tables']['plants']['Row']): Plant {
@@ -65,7 +64,6 @@ export async function createPlant(input: UpsertPlantInput): Promise<Plant> {
       location: input.location || null,
       acquired_on: input.acquiredOn || null,
       note: input.note || null,
-      next_repot_at: input.nextRepotAt || null,
     })
     .select('*')
     .single()
@@ -73,17 +71,6 @@ export async function createPlant(input: UpsertPlantInput): Promise<Plant> {
   if (error) {
     throw error
   }
-
-  await supabase.from('care_profiles').upsert(
-    {
-      plant_id: data.id,
-      watering_interval_days: 7,
-      fertilizing_interval_days: 30,
-    },
-    {
-      onConflict: 'plant_id',
-    },
-  )
 
   return mapPlant(data)
 }
@@ -99,7 +86,6 @@ export async function updatePlant(plantId: string, input: UpsertPlantInput): Pro
       location: input.location || null,
       acquired_on: input.acquiredOn || null,
       note: input.note || null,
-      next_repot_at: input.nextRepotAt || null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', plantId)

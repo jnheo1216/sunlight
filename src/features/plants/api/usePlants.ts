@@ -32,7 +32,8 @@ export function useCreatePlant() {
     mutationFn: (payload: UpsertPlantInput) => createPlant(payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.plants })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.schedules })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.latestCareSummaries })
+      void queryClient.invalidateQueries({ queryKey: ['schedule'] })
     },
   })
 }
@@ -45,7 +46,8 @@ export function useUpdatePlant(plantId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.plants })
       void queryClient.invalidateQueries({ queryKey: queryKeys.plant(plantId) })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.schedules })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.latestCareSummaries })
+      void queryClient.invalidateQueries({ queryKey: ['schedule'] })
     },
   })
 }
@@ -57,7 +59,8 @@ export function useDeletePlant() {
     mutationFn: (plantId: string) => deletePlant(plantId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.plants })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.schedules })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.latestCareSummaries })
+      void queryClient.invalidateQueries({ queryKey: ['schedule'] })
     },
   })
 }

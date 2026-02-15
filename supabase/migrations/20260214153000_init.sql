@@ -36,8 +36,19 @@ create table if not exists public.care_logs (
   plant_id uuid not null references public.plants(id) on delete cascade,
   event_type text not null check (event_type in ('WATER', 'FERTILIZE', 'REPOT')),
   occurred_at timestamptz not null,
+  fertilizer_name text,
   note text,
-  created_at timestamptz not null default timezone('utc', now())
+  created_at timestamptz not null default timezone('utc', now()),
+  constraint care_logs_fertilizer_name_chk check (
+    (
+      event_type = 'FERTILIZE'
+      and fertilizer_name is not null
+      and btrim(fertilizer_name) <> ''
+    ) or (
+      event_type <> 'FERTILIZE'
+      and fertilizer_name is null
+    )
+  )
 );
 
 create index if not exists idx_care_logs_event_type_occurred

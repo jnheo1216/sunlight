@@ -1,30 +1,16 @@
 import { requireSupabase } from '@/lib/supabase'
-import type { CareLog, CareProfile, CareEventType } from '@/types/domain'
+import type {
+  CareEventType,
+  CareLog,
+  PlantLatestCareSummary,
+} from '@/types/domain'
 import type { Database } from '@/types/supabase'
-
-export interface UpsertCareProfileInput {
-  wateringIntervalDays: number
-  fertilizingIntervalDays: number
-  nextWateringOverrideAt?: string
-  nextFertilizingOverrideAt?: string
-}
 
 export interface CreateCareLogInput {
   eventType: CareEventType
   occurredAt: string
+  fertilizerName?: string
   note?: string
-}
-
-function mapCareProfile(row: Database['public']['Tables']['care_profiles']['Row']): CareProfile {
-  return {
-    plantId: row.plant_id,
-    wateringIntervalDays: row.watering_interval_days,
-    fertilizingIntervalDays: row.fertilizing_interval_days,
-    nextWateringOverrideAt: row.next_watering_override_at,
-    nextFertilizingOverrideAt: row.next_fertilizing_override_at,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }
 }
 
 function mapCareLog(row: Database['public']['Tables']['care_logs']['Row']): CareLog {
@@ -33,55 +19,10 @@ function mapCareLog(row: Database['public']['Tables']['care_logs']['Row']): Care
     plantId: row.plant_id,
     eventType: row.event_type,
     occurredAt: row.occurred_at,
+    fertilizerName: row.fertilizer_name,
     note: row.note,
     createdAt: row.created_at,
   }
-}
-
-export async function getCareProfile(plantId: string): Promise<CareProfile | null> {
-  const supabase = requireSupabase()
-  const { data, error } = await supabase
-    .from('care_profiles')
-    .select('*')
-    .eq('plant_id', plantId)
-    .maybeSingle()
-
-  if (error) {
-    throw error
-  }
-
-  return data ? mapCareProfile(data) : null
-}
-
-export async function upsertCareProfile(
-  plantId: string,
-  input: UpsertCareProfileInput,
-): Promise<CareProfile> {
-  const supabase = requireSupabase()
-
-  const { data, error } = await supabase
-    .from('care_profiles')
-    .upsert(
-      {
-        plant_id: plantId,
-        watering_interval_days: input.wateringIntervalDays,
-        fertilizing_interval_days: input.fertilizingIntervalDays,
-        next_watering_override_at: input.nextWateringOverrideAt || null,
-        next_fertilizing_override_at: input.nextFertilizingOverrideAt || null,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: 'plant_id',
-      },
-    )
-    .select('*')
-    .single()
-
-  if (error) {
-    throw error
-  }
-
-  return mapCareProfile(data)
 }
 
 export async function listCareLogs(plantId: string): Promise<CareLog[]> {
@@ -111,6 +52,8 @@ export async function createCareLog(
       plant_id: plantId,
       event_type: input.eventType,
       occurred_at: input.occurredAt,
+      fertilizer_name:
+        input.eventType === 'FERTILIZE' ? input.fertilizerName?.trim() || null : null,
       note: input.note || null,
     })
     .select('*')
@@ -120,27 +63,51 @@ export async function createCareLog(
     throw error
   }
 
-  if (input.eventType === 'WATER') {
-    const { error: profileError } = await supabase
-      .from('care_profiles')
-      .update({ next_watering_override_at: null, updated_at: new Date().toISOString() })
-      .eq('plant_id', plantId)
-
-    if (profileError) {
-      throw profileError
-    }
-  }
-
-  if (input.eventType === 'FERTILIZE') {
-    const { error: profileError } = await supabase
-      .from('care_profiles')
-      .update({ next_fertilizing_override_at: null, updated_at: new Date().toISOString() })
-      .eq('plant_id', plantId)
-
-    if (profileError) {
-      throw profileError
-    }
-  }
-
   return mapCareLog(data)
+}
+
+function createEmptySummary(plantId: string): PlantLatestCareSummary {
+  return {
+    plantId,
+    lastWateredAt: null,
+    lastFertilizedAt: null,
+    lastFertilizerName: null,
+    lastRepottedAt: null,
+  }
+}
+
+export async function listLatestCareSummaries(): Promise<PlantLatestCareSummary[]> {
+  const supabase = requireSupabase()
+  const { data, error } = await supabase
+    .from('care_logs')
+    .select('plant_id, event_type, occurred_at, fertilizer_name')
+    .order('occurred_at', { ascending: false })
+
+  if (error) {
+    throw error
+  }
+
+  const summaryMap = new Map<string, PlantLatestCareSummary>()
+
+  for (const row of data) {
+    const plantId = row.plant_id
+    const existing = summaryMap.get(plantId) ?? createEmptySummary(plantId)
+
+    if (row.event_type === 'WATER' && !existing.lastWateredAt) {
+      existing.lastWateredAt = row.occurred_at
+    }
+
+    if (row.event_type === 'FERTILIZE' && !existing.lastFertilizedAt) {
+      existing.lastFertilizedAt = row.occurred_at
+      existing.lastFertilizerName = row.fertilizer_name
+    }
+
+    if (row.event_type === 'REPOT' && !existing.lastRepottedAt) {
+      existing.lastRepottedAt = row.occurred_at
+    }
+
+    summaryMap.set(plantId, existing)
+  }
+
+  return [...summaryMap.values()]
 }

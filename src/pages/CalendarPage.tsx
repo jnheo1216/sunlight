@@ -1,18 +1,17 @@
 import { useMemo, useState } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
 import listPlugin from '@fullcalendar/list'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { DatesSetArg, EventClickArg } from '@fullcalendar/core/index.js'
 import { addDays } from 'date-fns'
 import koLocale from '@fullcalendar/core/locales/ko'
 
-import { CalendarFilters, type CalendarFilterState, type CalendarFilterType } from '@/components/plant/CalendarFilters'
+import { CalendarFilters, type CalendarFilterType } from '@/components/plant/CalendarFilters'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
 import { useSchedule } from '@/features/schedule/api/useSchedule'
-import { formatDate } from '@/lib/utils'
-import { toCalendarEvents } from '@/services/scheduleService'
+import { formatDateTime } from '@/lib/utils'
+import { careEventLabel, toCalendarEvents } from '@/services/scheduleService'
 
 export function CalendarPage() {
   const [range, setRange] = useState(() => {
@@ -24,29 +23,21 @@ export function CalendarPage() {
     }
   })
   const [typeFilter, setTypeFilter] = useState<CalendarFilterType>('ALL')
-  const [stateFilter, setStateFilter] = useState<CalendarFilterState>('ALL')
   const [selectedEvent, setSelectedEvent] = useState<{
     title: string
     date: string
-    status: string
-    completed: boolean
+    type: 'WATER' | 'FERTILIZE' | 'REPOT'
+    fertilizerName: string | null
+    note: string | null
   } | null>(null)
 
   const { data, isLoading, error } = useSchedule(range)
 
   const filtered = useMemo(() => {
     return (data ?? []).filter((item) => {
-      const typeMatch = typeFilter === 'ALL' ? true : item.type === typeFilter
-      const stateMatch =
-        stateFilter === 'ALL'
-          ? true
-          : stateFilter === 'COMPLETED'
-            ? item.completed
-            : !item.completed
-
-      return typeMatch && stateMatch
+      return typeFilter === 'ALL' ? true : item.type === typeFilter
     })
-  }, [data, stateFilter, typeFilter])
+  }, [data, typeFilter])
 
   const events = useMemo(() => toCalendarEvents(filtered), [filtered])
 
@@ -59,15 +50,17 @@ export function CalendarPage() {
 
   const handleEventClick = (arg: EventClickArg) => {
     const extended = arg.event.extendedProps as {
-      status: string
-      completed: boolean
+      type: 'WATER' | 'FERTILIZE' | 'REPOT'
+      fertilizerName: string | null
+      note: string | null
     }
 
     setSelectedEvent({
       title: arg.event.title,
       date: arg.event.start?.toISOString() ?? '',
-      status: extended.status,
-      completed: extended.completed,
+      type: extended.type,
+      fertilizerName: extended.fertilizerName,
+      note: extended.note,
     })
   }
 
@@ -83,24 +76,19 @@ export function CalendarPage() {
     <div className='space-y-4'>
       <Card>
         <CardHeader>
-          <CardTitle>케어 캘린더</CardTitle>
+          <CardTitle>케어 기록 캘린더</CardTitle>
         </CardHeader>
         <CardContent className='space-y-4'>
-          <CalendarFilters
-            type={typeFilter}
-            state={stateFilter}
-            onTypeChange={setTypeFilter}
-            onStateChange={setStateFilter}
-          />
+          <CalendarFilters type={typeFilter} onTypeChange={setTypeFilter} />
 
           <div className='overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2'>
             <FullCalendar
-              plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+              plugins={[dayGridPlugin, listPlugin, interactionPlugin]}
               initialView='dayGridMonth'
               headerToolbar={{
                 left: 'prev,next today',
                 center: 'title',
-                right: 'dayGridMonth,timeGridWeek,listWeek',
+                right: 'dayGridMonth,listMonth',
               }}
               locale={koLocale}
               events={events}
@@ -114,18 +102,21 @@ export function CalendarPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>선택 일정 상세</CardTitle>
+          <CardTitle>선택 기록 상세</CardTitle>
         </CardHeader>
         <CardContent>
           {selectedEvent ? (
             <div className='space-y-1 text-sm'>
               <p className='font-semibold'>{selectedEvent.title}</p>
-              <p className='text-[var(--color-fg-muted)]'>날짜: {formatDate(selectedEvent.date)}</p>
-              <p className='text-[var(--color-fg-muted)]'>상태: {selectedEvent.status}</p>
-              <p className='text-[var(--color-fg-muted)]'>유형: {selectedEvent.completed ? '완료 이력' : '예정 일정'}</p>
+              <p className='text-[var(--color-fg-muted)]'>날짜: {formatDateTime(selectedEvent.date)}</p>
+              <p className='text-[var(--color-fg-muted)]'>타입: {careEventLabel(selectedEvent.type)}</p>
+              {selectedEvent.type === 'FERTILIZE' ? (
+                <p className='text-[var(--color-fg-muted)]'>비료: {selectedEvent.fertilizerName ?? '-'}</p>
+              ) : null}
+              <p className='text-[var(--color-fg-muted)]'>메모: {selectedEvent.note ?? '없음'}</p>
             </div>
           ) : (
-            <p className='text-sm text-[var(--color-fg-muted)]'>캘린더에서 일정을 선택해주세요.</p>
+            <p className='text-sm text-[var(--color-fg-muted)]'>캘린더에서 기록을 선택해주세요.</p>
           )}
         </CardContent>
       </Card>
