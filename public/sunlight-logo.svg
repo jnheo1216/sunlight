@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Sunlight logo</title>
+  <desc id="desc">A sun and sprout emblem on a rounded square badge.</desc>
+  <defs>
+    <linearGradient id="badge" x1="36" y1="20" x2="220" y2="236" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e6f2c7" />
+      <stop offset="1" stop-color="#3f7f53" />
+    </linearGradient>
+    <radialGradient id="sun" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(98 86) rotate(90) scale(30)">
+      <stop offset="0" stop-color="#ffe48a" />
+      <stop offset="1" stop-color="#f4b93d" />
+    </radialGradient>
+    <linearGradient id="leafLeft" x1="84" y1="84" x2="134" y2="148" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7fcf7e" />
+      <stop offset="1" stop-color="#3f8758" />
+    </linearGradient>
+    <linearGradient id="leafRight" x1="122" y1="84" x2="172" y2="148" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#97db87" />
+      <stop offset="1" stop-color="#4f9c62" />
+    </linearGradient>
+  </defs>
+
+  <rect x="16" y="16" width="224" height="224" rx="58" fill="url(#badge)" />
+  <circle cx="128" cy="128" r="92" fill="#fefdf9" opacity="0.97" />
+
+  <circle cx="98" cy="86" r="24" fill="url(#sun)" />
+
+  <path d="M128 192V132" stroke="#3f7f53" stroke-width="14" stroke-linecap="round" />
+  <path d="M128 148C93 145 77 114 84 88C117 90 134 120 128 148Z" fill="url(#leafLeft)" />
+  <path d="M128 148C163 145 179 114 172 88C139 90 122 120 128 148Z" fill="url(#leafRight)" />
+
+  <path d="M84 192H172L162 218H94L84 192Z" fill="#d9c8a1" />
+  <path d="M84 192H172" stroke="#b89f73" stroke-width="6" stroke-linecap="round" />
+</svg>
